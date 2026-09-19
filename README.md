@@ -25,31 +25,33 @@ See [docs/San_Diego_GIS__Parcel_Data_APIs___Reference.md](docs/San_Diego_GIS__Pa
 
 All endpoints below are publicly accessible, unauthenticated Esri ArcGIS REST services maintained by San Diego County and SANDAG. No API key or login is required.
 
-**San Diego County**
-- `https://gis-public.sandiegocounty.gov/arcgis/rest/services/PPM_PublicAGO/MapServer` — Assessor parcels, General Plan, zoning, road names (unincorporated county)
+### San Diego County — one API
 
-**SANDAG regional GIS**
-- `https://geo.sandag.org/server/rest/services/Hosted/Parcels/FeatureServer/0` — Countywide parcels with situs addresses
-- `https://geo.sandag.org/server/rest/services/Hosted/Zoning_Unincorporated/FeatureServer/0`
-- `https://geo.sandag.org/server/rest/services/Hosted/Zoning_Base_SD/FeatureServer/0`
-- `https://geo.sandag.org/server/rest/services/Hosted/General_Plan_Land_Use_SD/FeatureServer/0`
-- `https://geo.sandag.org/server/rest/services/Hosted/Community_Plan_SD/FeatureServer/0`
-- `https://geo.sandag.org/server/rest/services/Hosted/Senate_Bill_9/FeatureServer/0`
-- `https://geo.sandag.org/server/rest/services/Hosted/Senate_Bill_35/FeatureServer/0`
-- `https://geo.sandag.org/server/rest/services/Hosted/Senate_Bill_6/FeatureServer/0`
-- `https://geo.sandag.org/server/rest/services/Hosted/Assembly_Bill_2011/FeatureServer/0`
-- `https://geo.sandag.org/server/rest/services/Hosted/Assembly_Bill_803/FeatureServer/0`
-- `https://geo.sandag.org/server/rest/services/Hosted/Housing_Laws/FeatureServer/0`
-- `https://geo.sandag.org/server/rest/services/Hosted/Transit_Priority_Areas/FeatureServer/0`
-- `https://geo.sandag.org/server/rest/services/Hosted/Transit_Stops_GTFS/FeatureServer/0`
-- `https://geo.sandag.org/server/rest/services/Hosted/Sustainable_Development_Areas/FeatureServer/0`
-- `https://geo.sandag.org/server/rest/services/Hosted/Housing_Solution_Areas/FeatureServer/0`
-- `https://geo.sandag.org/server/rest/services/Hosted/Prime_Industrial_Lands/FeatureServer/0`
-- `https://geo.sandag.org/server/rest/services/Hosted/Address_Points/FeatureServer/0`
-- `https://geo.sandag.org/server/rest/services/Hosted/Address_Points_NG911/FeatureServer/0`
-- `https://geo.sandag.org/server/rest/services/Parcels_APN_Locator/GeocodeServer`
-- `https://geo.sandag.org/server/rest/services/SANDAG_COMPOSITE_LOCATOR/GeocodeServer`
-- `https://geo.sandag.org/portal/sharing/rest` — Portal search/catalog API
+One MapServer, `PPM_PublicAGO`, with a few layers underneath it:
+
+- `https://gis-public.sandiegocounty.gov/arcgis/rest/services/PPM_PublicAGO/MapServer`
+  - Layer 0 — Assessor parcels (values, acreage, building details, zone/use codes)
+  - Layer 1 — General Plan (unincorporated county)
+  - Layer 2 — Zoning (unincorporated county)
+  - Table — Road name reference
+
+### SANDAG regional GIS — one host, three service types, hundreds of services
+
+Everything lives on the same ArcGIS Server/Portal instance (`geo.sandag.org`), but unlike the county it is not one API with a few layers. It's one host publishing **373 hosted FeatureServer items** individually, plus two other API types entirely. We've only explored a fraction of the 373 so far — there's likely a lot more useful data in there we haven't looked at yet.
+
+**1. FeatureServer services** (each its own service, not a layer of a shared one) — `.../server/rest/services/Hosted/<name>/FeatureServer/0`. Explored so far:
+- `Parcels` — countywide parcels with situs addresses
+- `Zoning_Unincorporated`, `Zoning_Base_SD`, `General_Plan_Land_Use_SD`, `Community_Plan_SD` — zoning and general plan
+- `Senate_Bill_9`, `Senate_Bill_35`, `Senate_Bill_6`, `Assembly_Bill_2011`, `Assembly_Bill_803`, `Housing_Laws` — state housing law screening
+- `Transit_Priority_Areas`, `Transit_Stops_GTFS`, `Sustainable_Development_Areas`, `Housing_Solution_Areas`, `Prime_Industrial_Lands` — transit/TOD overlays
+- `Address_Points`, `Address_Points_NG911` — address point data
+
+**2. GeocodeServer services** — a different API shape (address/APN in, coordinates out):
+- `Parcels_APN_Locator/GeocodeServer`
+- `SANDAG_COMPOSITE_LOCATOR/GeocodeServer`
+
+**3. Portal sharing REST API** — catalog/search, not a data layer:
+- `https://geo.sandag.org/portal/sharing/rest`
 
 See the [reference doc](docs/San_Diego_GIS__Parcel_Data_APIs___Reference.md) for field schemas and example queries for each.
 
