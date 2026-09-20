@@ -170,10 +170,48 @@ from this session because fire.ca.gov robots.txt blocks the fetcher.
 These return active and historical incident points, not land constraints.
 Superseded for this project by Fire Perimeters above.
 
+## Verified working: County parcel geometry into FHSZ and FRAP
+
+Tested 2026-09-19. The County assessor layer (PPM_PublicAGO/MapServer/0)
+returns parcel polygons with `outSR=4326`, and those feed straight into
+the FHSZ and FRAP queries above. The chain is: locate parcel by point or
+APN, take a point inside it, query SRA, LRA and FRAP.
+
+Results for three unincorporated parcels:
+
+| Area | APN | FHSZ result | Burn history (FRAP) |
+| --- | --- | --- | --- |
+| Julian | 2910842600 | SRA, Very High | none returned |
+| Descanso | 4052511300 | SRA, Very High | 1924 (5,166 ac), 1948 (516 ac) |
+| Alpine | 4034100800 | SRA, Very High | 1929 (22,336 ac) |
+| Ramona (town) | 2812811300 | LRA, NonWildland | none returned |
+
+Findings and gotchas:
+
+- Use the polygon, not a vertex average. The script averaged ring
+  vertices to get a point, which is not a true centroid and can land
+  outside a concave parcel. Sending the parcel polygon to the FHSZ layer
+  (`geometryType=esriGeometryPolygon`, `spatialRel=esriSpatialRelIntersects`)
+  is more defensible and also shows whether a parcel straddles two zones.
+  If it does, report the highest class.
+- Polygon queries must use POST. A 140-vertex parcel produced a GET URL of
+  roughly 5.6 KB and the FHSZ service returned an HTML error page instead
+  of JSON. The same query as a form-encoded POST returned correctly.
+- Handle non-JSON responses. Both the County service and the FHSZ service
+  intermittently returned an HTML error page on otherwise valid requests.
+  Retry with a short delay and check for JSON before parsing.
+- `ACREAGE` was null on two of four parcels (Julian, Ramona). Compute area
+  from geometry when it matters.
+- County layer 0 has no situs address field, so an address lookup has to go
+  through SANDAG Hosted/Parcels first to get an APN.
+- Several old FRAP records (1924, 1929, 1948) have a null `FIRE_NAME`, so do
+  not key any logic on that field.
+- Only parcels in the unincorporated County were tested. City of San Diego and
+  other incorporated parcels are generally LRA (not tested here), and local VHFHSZ adoption is still
+  unchecked (see below).
+
 ## Still to evaluate
 
-Whether county assessors expose parcel geometry that can be fed directly
-into the FHSZ and perimeter point queries.
 Other constraint layers: FEMA flood, Alquist-Priolo fault zones, liquefaction,
 county zoning and general plan services.
 Local jurisdiction VHFHSZ adoption, cities may adopt zones more restrictive
