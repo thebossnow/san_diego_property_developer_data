@@ -293,9 +293,8 @@ Other incorporated cities (leads only, not verified against city sources):
 
 ## Still to evaluate
 
-Local adoption in the other 17 incorporated cities and the unincorporated
-County (start with Chula Vista, Escondido, Oceanside, Carlsbad, El Cajon,
-San Marcos, Santee). Whether any publish a queryable layer or only a PDF
-map.
+Local adoption in the other 17 incorporated cities is now covered in
+[San_Diego_County_City_FHSZ_Layers.md](San_Diego_County_City_FHSZ_Layers.md).
+What is left is listed at the end of that doc.
 Other constraint layers: FEMA flood, Alquist-Priolo fault zones, liquefaction,
 county zoning and general plan services.

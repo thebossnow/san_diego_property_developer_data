@@ -46,6 +46,8 @@ See [docs/San_Diego_County_Constraint_Layers_Reference.md](docs/San_Diego_County
 
 See [docs/CAL_FIRE_Endpoints_Reference.md](docs/CAL_FIRE_Endpoints_Reference.md) for statewide fire hazard severity zones (SRA/LRA), historic fire perimeters (burn history), and the AB 38 disclosure requirements that follow from a High/Very High result. These are statewide services, so they apply to any parcel in the county.
 
+See [docs/San_Diego_County_City_FHSZ_Layers.md](docs/San_Diego_County_City_FHSZ_Layers.md) for which cities publish their own fire hazard layers and whether they match the state map. The City of San Diego adopted a larger Very High zone than the state's, so the state layer alone understates it there.
+
 ### SANDAG regional GIS — one host, three service types, hundreds of services
 
 Everything lives on the same ArcGIS Server/Portal instance (`geo.sandag.org`), but unlike the county it is not one API with a few layers. It's one host publishing **373 hosted FeatureServer items** individually, plus two other API types entirely. We've only explored a fraction of the 373 so far — there's likely a lot more useful data in there we haven't looked at yet.
