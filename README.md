@@ -10,8 +10,9 @@ A comprehensive resource for programmatic analysis and due diligence on San Dieg
 - **Transit & TOD overlays**: Transit stops (GTFS), priority areas, and FAR overlays for SB 79 site screening
 - **Address normalization**: Direct address-to-APN lookups and NG911-standard address point schemas
 - **Geocoding services**: Both address and APN-based geocoders for coordinate-based spatial queries
+- **Terrain & elevation**: USGS 3DEP bare-earth DEM (1 m lidar-derived in San Diego) — point elevation, slope, aspect, elevation profiles, parcel-level slope statistics, and GeoTIFF clips
 
-All services are unauthenticated REST APIs serving GeoJSON/JSON from SANDAG's regional GIS platform and San Diego County's public assessor data.
+All services are unauthenticated REST APIs. The parcel, zoning, housing-law, transit and geocoding services serve GeoJSON/JSON from SANDAG's regional GIS platform and San Diego County's public assessor data; elevation is a raster service from USGS (JSON, or binary GeoTIFF — no GeoJSON).
 
 ## Documentation
 
@@ -23,7 +24,7 @@ See [docs/San_Diego_GIS__Parcel_Data_APIs___Reference.md](docs/San_Diego_GIS__Pa
 
 ## API endpoints referenced
 
-All endpoints below are publicly accessible, unauthenticated Esri ArcGIS REST services maintained by San Diego County and SANDAG. No API key or login is required.
+All endpoints below are publicly accessible, unauthenticated Esri ArcGIS REST services maintained by San Diego County, SANDAG, and USGS. No API key or login is required.
 
 ### San Diego County — one API
 
@@ -55,6 +56,19 @@ Everything lives on the same ArcGIS Server/Portal instance (`geo.sandag.org`), b
 
 See the [reference doc](docs/San_Diego_GIS__Parcel_Data_APIs___Reference.md) for field schemas and example queries for each.
 
+### USGS 3DEP — bare-earth elevation
+
+A public ArcGIS **ImageServer** (raster, not vector features), nationwide, hosted by USGS rather than SANDAG or the County:
+
+- `https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer`
+  - `getSamples` — elevation at a point or along a line (meters, NAVD 88)
+  - `identify` — elevation, or slope/aspect via `renderingRule`, at a point
+  - `computeStatisticsHistograms` — min/max/mean elevation or slope over a parcel polygon
+  - `exportImage` — clip the DEM to a bbox as a GeoTIFF
+  - `query` — which source lidar collections cover a point
+
+Accepts WGS84 or State Plane (EPSG:2230) input, so SANDAG parcel geometry can be passed straight in. An ArcGIS Online item called "USGS 3D Elevation" (listed under NCDOT) only points to this service. See the [reference doc](docs/San_Diego_GIS__Parcel_Data_APIs___Reference.md#usgs-3dep--bare-earth-elevation-imageserver) for verified examples and caveats.
+
 ## License
 
-This project is licensed under the MIT License — see [LICENSE](LICENSE). The underlying GIS data is public domain, maintained by San Diego County and SANDAG; this repository's own code and documentation are covered by the MIT License.
+This project is licensed under the MIT License — see [LICENSE](LICENSE). The underlying GIS data is public domain, maintained by San Diego County, SANDAG, and USGS; this repository's own code and documentation are covered by the MIT License.
