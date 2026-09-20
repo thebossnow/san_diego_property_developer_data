@@ -230,7 +230,7 @@ https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/1m/Projects/CA_SanDieg
 https://gis-public.sandiegocounty.gov/arcgis/rest/services
 ```
 
-Public, no auth. 26 folders, roughly 150 services. This section only covers content in `sdep_warehouse` that has **no SANDAG equivalent** — floodplain, faults, conservation, easements, utilities, and similar overlay layers used for hard-constraint screening. Parcels, zoning, general plan, housing law, and geocoding are covered in the other doc and are intentionally left out here; see the reconciliation notes below for the overlapping services this pass found on the County server but did not fully verify against SANDAG's versions of the same data.
+Public, no auth. 26 folders, roughly 150 services. This section mainly covers content in `sdep_warehouse` that has **no SANDAG equivalent** — floodplain, faults, conservation, easements, utilities, and similar overlay layers used for hard-constraint screening. Parcels, zoning, general plan, housing law, and geocoding are covered in the other doc; five County-hosted services overlap that ground and were tested directly against their SANDAG counterparts (record-for-record diffs and point checks) — results below.
 
 ### Folder index
 
@@ -269,37 +269,44 @@ SDCFA, sdep2_workspace, sdep_warehouse, SDSO, Tools, Utilities, WWM
 | Root: `PDS/ISRP_PARCELS` | Initial Study Research Packet parcels |
 | Root: `InitialResearchPacketV2` GPServer | Geoprocessing service that builds a county research packet |
 
-### Needs reconciliation — do not treat as authoritative yet
+### Reconciliation results (verified 2026-09-19)
 
-These County-hosted services cover the same subject matter as a service already verified in the other doc, on a different host, and were **not** cross-checked against each other in this pass. Before relying on either, confirm they agree:
+The five overlaps above were tested directly: full-table diffs where feasible (record counts, field-by-field comparison, MD5 of the sorted result set), plus point/APN-level spot checks. Corrected test points used: `INC_PT` = APN 1711720700, 1818 Voluntary Rd, Vista 92084 (confirmed `situs_juris='VS'` via `JUR_MUNICIPAL`); `UNINC_PT` = APN 1332422300, 30901 Rebecca Ln, Valley Center 92082 (confirmed `situs_juris='CN'`).
 
-| County service (this pass, unverified against SANDAG) | Overlaps with (other doc, verified) | Discrepancy found |
-|---|---|---|
-| `cosd_warehouse/parcels_all_for_public_use/MapServer/0` | County `PPM_PublicAGO/MapServer` Layer 0 | This layer's description says "redacted for public use," no assessed value or owner-occupied flag. `PPM_PublicAGO` Layer 0 has `ASR_LAND`/`ASR_IMPR`/`ASR_TOTAL` and `OWNEROCC`. Same host, two parcel services, different data. Unclear which is current. |
-| `sdep_warehouse/HOUSING_LAWS/FeatureServer/0` | SANDAG `Housing_Laws` (and the five per-bill layers) | This layer's `JURI` field has both `INC` and `UNINC` values, implying incorporated cities are scored. The SANDAG version was verified to return `N/A` on every criterion for `juri=UNINC`... i.e., it only scores unincorporated county, and returns `N/A` inside incorporated cities. Directly conflicting claims about incorporated-city coverage. Needs a same-point test against both. |
-| `sdep_warehouse/ZONING_CN` | SANDAG `Zoning_Unincorporated` | Other doc states `Zoning_Unincorporated` is "the SANDAG mirror of the County's own Zoning layer (identical schema)." `ZONING_CN` is very likely the same underlying source. Not worth a separate integration unless a schema diff turns up. |
-| Root `SB9_CRITERIA_MET_01072024` (standalone MapService) | SANDAG `Senate_Bill_9` | Likely a snapshot of the same SB 9 screening the SANDAG layer already covers in more depth (category, urban areas, FHSZ, environmental flags). Not separately verified. |
-| Root `ADDRAPN` GeocodeServer | SANDAG `Parcels_APN_Locator` | Both claim to geocode by APN. Not compared for coverage or match behavior. |
+| County service | SANDAG equivalent | Verdict | Detail |
+|---|---|---|---|
+| `cosd_warehouse/parcels_all_for_public_use/MapServer/0` | `PPM_PublicAGO/MapServer/0` | **Complementary split, not tiers** | Confirmed schema-level: `parcels_all_for_public_use` (16 fields) carries all `SITUS_*` fields but genuinely has no `ASR_LAND`/`ASR_IMPR`/`ASR_TOTAL`/`OWNEROCC` in its schema; `PPM_PublicAGO` (42 fields) has the assessed-value fields but no situs address at all. Neither is a subset of the other — getting both requires an APN join across services. SANDAG's `Hosted/Parcels` (56 fields, other doc) already carries both sets in one layer and cross-checks exactly against `PPM_PublicAGO` (e.g. `asr_land=186949` matches on APN 1332422300) — use that instead of joining the two County services when you need address and value together. |
+| `sdep_warehouse/HOUSING_LAWS/FeatureServer/0` | `Housing_Laws` (SANDAG) | **Confirmed duplicate** | Byte-identical: all 8,968 records match field-for-field, same MD5 in both OBJECTID order and sorted order. Neither layer scores incorporated cities — `JURI='INC'` (491 rows on both) returns `N/A` on every criteria field with zero exceptions found across the full table, not just at a sample point. In-city SB 35 / AB 2011 streamlining screening is not available from either source. |
+| `sdep_warehouse/ZONING_CN` | `Zoning_Unincorporated` (SANDAG) | **Confirmed duplicate** | Byte-identical: all 6,998 records match across the 43 shared attribute fields (County's copy adds 4 editor-tracking fields, no data difference). Treat as one dataset under two URLs; no separate integration needed. |
+| `SB9_CRITERIA_MET_01072024` (County, standalone MapService) | `Senate_Bill_9` (SANDAG) | **Confirmed conflict** | Not the same data. Stratified sample of 171 points: 5.8% disagree on `sb9_criteria_met` — every flip runs County=NO / SANDAG=YES, the expensive direction of error for a screening tool — and 25.1% disagree on `fhsz_very_high`. SANDAG's copy was last edited 2026-09-01; the County service's own name declares a 2024-01-07 snapshot. Recommend SANDAG on recency grounds, but this is a recency call, not an independent correctness check: neither server has a countywide Fire Hazard Severity Zone layer (SANDAG's `Fire_Hazard_Severity_Zones_SD` is a single polygon covering only the City of San Diego LRA), so the FHSZ disagreement itself can't be adjudicated from these two servers alone. If SB 9 eligibility will drive a real decision, verify FHSZ against CAL FIRE's own published maps before relying on either layer. |
+| `ADDRAPN` (County GeocodeServer) | `Parcels_APN_Locator` (SANDAG) | **Confirmed not duplicates** | Different tools despite both claiming APN support. `ADDRAPN` is actually an address locator (`addressFields: Street/City/ZIP`, single-line field literally named `"Single Line Input"`) — an APN as input returns 0 candidates with a geometry error. `Parcels_APN_Locator` takes an APN via `SingleLine` and returns the parcel centroid, confirmed to match `x_coord`/`y_coord` within 0.001 ft on 2 of 3 test APNs. County's address-based geocode landed 29–108 ft from the true parcel centroid on the same APNs (it returns an address point, a different feature). Keep both, but use them as address-in vs. APN-in, not as interchangeable backups. |
 
 ### Jurisdiction codes
 
-Used across both the County and SANDAG services on fields like `situs_juris`, `overlay_juris`, and `JURI` (values differ slightly, `CO`/`UNINC` vs `INC` depending on the service):
+Two different schemes are in use, and they are easy to conflate.
+
+`situs_juris` / `overlay_juris` (parcels, zoning) use one abbreviation per incorporated city plus `CN` for unincorporated county. Verified live against the County's own `sdep_warehouse/JUR_MUNICIPAL` code table (19 codes: the 18 incorporated cities plus the county):
 
 ```
-CB Carlsbad      CN Coronado      CO/UNINC County/unincorporated   CV Chula Vista
-DM Del Mar       EC El Cajon      EN Encinitas               ES Escondido
-IB Imperial Beach LG Lemon Grove  LM La Mesa                 NC National City
-OC Oceanside     PW Poway         SD San Diego               SM San Marcos
-SO Solana Beach  ST Santee        VS Vista                   None
+CB CARLSBAD        CO CORONADO       CN S.D. COUNTY (unincorporated)   CV CHULA VISTA
+DM DEL MAR          EC EL CAJON       EN ENCINITAS                       ES ESCONDIDO
+IB IMPERIAL BEACH   LG LEMON GROVE    LM LA MESA                         NC NATIONAL CITY
+OC OCEANSIDE         PW POWAY          SD SAN DIEGO                       SM SAN MARCOS
+SO SOLANA BEACH      ST SANTEE         VS VISTA
 ```
+
+**Do not confuse `CN` (unincorporated county) with `CO` (Coronado, a city).** An earlier draft of this table had them backwards. Confirmed live: `situs_juris='CO'` returns 11,317 parcels in Coronado, La Jolla, Chula Vista, and Imperial Beach — not unincorporated county. Unincorporated county is `CN` (222,975 parcels: Alpine, Borrego Springs, Campo, Fallbrook, Jamul, Julian, Ramona, Valley Center, etc.). A mailing address that says "Vista" or another city name does not mean the parcel is inside that city's incorporated limits — check `situs_juris` directly, since unincorporated pockets carry city-sounding mailing addresses.
+
+`JURI` (the housing-law layers only) is a separate, coarser scheme: just `INC` or `UNINC`, distinguishing any incorporated city from the county without naming which city.
 
 ### SanGIS gotchas
 
 1. **No SB 79 layer exists** on either host. Transit-proximity tiering has to be built from SANDAG's `Transit_Stops_GTFS` (see other doc) plus your own buffers.
-2. **MapServer vs FeatureServer.** Several MapServer endpoints reject `/query` with `"The requested capability is not supported"` (`sdep_warehouse/HOUSING_LAWS/MapServer` is one). Always try the FeatureServer variant first.
-3. **Native spatial reference is 2230** (NAD83 California State Plane Zone 6, US survey feet), same as the SANDAG services. Pass `outSR=4326` if you want lat/lon back.
-4. **Paginate.** Most layers cap at 1000-2000 records per request. Use `resultOffset` and `resultRecordCount` with `orderByFields` for stable ordering.
-5. **`returnDistinctValues=true` still respects maxRecordCount**, so a distinct query on a large layer can be incomplete. Verify with `returnCountOnly` first.
+2. **`CN` vs `CO` in `situs_juris`/`overlay_juris`.** `CN` is unincorporated county, `CO` is Coronado — see Jurisdiction codes above. Easy to get backwards, and a query that silently selects the wrong 11K+ parcels doesn't error, it just returns plausible-looking wrong results.
+3. **MapServer vs FeatureServer.** Several MapServer endpoints reject `/query` with `"The requested capability is not supported"` (`sdep_warehouse/HOUSING_LAWS/MapServer` is one). Always try the FeatureServer variant first.
+4. **Native spatial reference is 2230** (NAD83 California State Plane Zone 6, US survey feet), same as the SANDAG services. Pass `outSR=4326` if you want lat/lon back.
+5. **Paginate.** Most layers cap at 1000-2000 records per request. Use `resultOffset` and `resultRecordCount` with `orderByFields` for stable ordering.
+6. **`returnDistinctValues=true` still respects maxRecordCount**, so a distinct query on a large layer can be incomplete. Verify with `returnCountOnly` first.
 
 ---
 
@@ -360,25 +367,28 @@ esriSpatialRelEnvelopeIntersects   fastest, least precise
 
 Ordered by impact on SB 79 site screening.
 
-1. **City-level zoning beyond San Diego.** Confirmed published for City of San Diego (`Zoning_Base_SD`) and unincorporated county only. Vista, Carlsbad, Oceanside, Escondido, San Marcos zoning is not on either GIS platform found so far. Each city likely runs its own GIS, not yet enumerated.
-2. **Owner identity (name).** Neither parcels service (County or SANDAG) publishes an owner name field, only an owner-occupied flag. Assessed value itself is already available (`PPM_PublicAGO` Layer 0, see other doc). Owner name still requires Realist, CRMLS, or the ARCC side.
-3. **SB 79 tier geometry.** Nothing publishes SB 79's own "major transit stop" / tier determination as a layer. Has to be built from `Transit_Stops_GTFS` plus the statute's own distance/frequency thresholds.
-4. **Fire hazard severity zones (CAL FIRE FHSZ).** Referenced as fields inside some SANDAG housing-law layers (`fhsz_very_high`, etc.) but no standalone FHSZ layer located on either county server. A CAL FIRE state endpoint likely exists, not yet checked.
-5. **Slope-based constrained-area deductions.** Several jurisdictions deduct steep slope from developable area in density calcs. Compute from the D24 DEM once finalist sites are picked (Section 4).
-6. **Reconciliation items above.** The five County/SANDAG overlapping services in the table in Section 5 need a same-point comparison before either is trusted for a specific parcel.
+1. **City-level zoning beyond San Diego.** Confirmed published for City of San Diego (`Zoning_Base_SD`) and unincorporated county only (`Zoning_Unincorporated`/`ZONING_CN`, confirmed identical to each other). Vista, Carlsbad, Oceanside, Escondido, San Marcos zoning is not on either GIS platform found so far. Each city likely runs its own GIS, not yet enumerated.
+2. **In-city SB 35 / AB 2011 / streamlining eligibility.** Confirmed unavailable, not just undocumented: County and SANDAG `Housing_Laws` are byte-identical, and both return `N/A` on every criteria field for all 491 incorporated-city (`JURI='INC'`) rows, checked across the full table. Vista, Carlsbad, and every other city need a different source entirely — this doesn't exist yet on either GIS platform found so far.
+3. **Owner identity (name).** Neither parcels service (County or SANDAG) publishes an owner name field, only an owner-occupied flag. Assessed value plus situs address in one call: SANDAG `Hosted/Parcels` (other doc), confirmed to cross-check exactly against `PPM_PublicAGO`. Owner name still requires Realist, CRMLS, or the ARCC side.
+4. **SB 79 tier geometry.** Nothing publishes SB 79's own "major transit stop" / tier determination as a layer. Has to be built from `Transit_Stops_GTFS` plus the statute's own distance/frequency thresholds.
+5. **Fire hazard severity zones (CAL FIRE FHSZ).** Confirmed there is no countywide FHSZ layer on either server — SANDAG's `Fire_Hazard_Severity_Zones_SD` is a single polygon covering only the City of San Diego LRA. This is now more than a documentation gap: the two SB 9 sources (Section 5) disagree on `fhsz_very_high` at 25.1% of sampled points, consistent with (but not confirmed against) a 2025 CAL FIRE FHSZ map update. Need CAL FIRE's own state FHSZ endpoint to adjudicate before trusting either SB 9 layer's fire-hazard flag.
+6. **Slope-based constrained-area deductions.** Several jurisdictions deduct steep slope from developable area in density calcs. Compute from the D24 DEM once finalist sites are picked (Section 4).
 
 ### Candidate pipeline
 
 ```
-1. Pull candidate parcels          -> SANDAG Hosted/Parcels, filter situs_juris + acreage (other doc)
+1. Pull candidate parcels          -> SANDAG Hosted/Parcels, filter situs_juris='CN' for
+                                      unincorporated (NOT 'CO', that's Coronado) + acreage (other doc)
 2. Filter to transit tier          -> SANDAG Transit_Stops_GTFS + buffer (verified, other doc);
                                       SB 79's own tier thresholds still TO BUILD on top of it
-3. Check zoning / base density     -> Zoning_Unincorporated (CN) or Zoning_Base_SD (City of SD);
+3. Check zoning / base density     -> Zoning_Unincorporated / ZONING_CN (confirmed identical,
+                                      either works) or Zoning_Base_SD (City of SD);
                                       other cities TO FIND
 4. Screen hard constraints         -> HYD_FLOODPL, ECO_MSCP_CN, GEOLOGY_ACTIVE_FAULTS_CN,
                                       ESMT_OPEN_SPACE, COASTAL_OVERLAY_ZONE_CN, AG_FMMP (this doc)
-5. Check streamlining eligibility   -> SANDAG Housing_Laws (verified UNINC-only, other doc);
-                                      cross-check against sdep_warehouse/HOUSING_LAWS once reconciled
+5. Check streamlining eligibility   -> Housing_Laws, County and SANDAG copies confirmed identical;
+                                      covers unincorporated county only, city parcels return N/A
+                                      from both and need a source that doesn't exist here yet
 6. Check utilities                  -> WW_SEPTIC_SEWER_PUBLIC (this doc)
 7. Terrain / grading cost           -> 3DEP computeStatisticsHistograms, then D24 DEM for finalists (this doc)
 8. Existing improvements            -> BUILDING_OUTLINES (this doc)
@@ -416,6 +426,7 @@ Also check `access` (`public` vs `org`) and `licenseInfo` before relying on anyt
 |---|---|
 | 2026-09-19 | Initial. 3DEP ImageServer, TNM Access API, SanGIS enumeration, vintage analysis. |
 | 2026-09-20 | Reconciled against `San_Diego_GIS__Parcel_Data_APIs___Reference.md`. Dropped/flagged County-side parcels, zoning, and housing-law claims that conflicted with or duplicated the SANDAG-verified versions. Trimmed Known Gaps to remove items already solved in that doc. |
+| 2026-09-20 | Live-tested all five Section 5 County/SANDAG overlaps: parcels (confirmed complementary split), housing law (confirmed duplicate, byte-identical), zoning (confirmed duplicate, byte-identical), SB 9 (confirmed real conflict, 5.8-25.1% disagreement, recommend SANDAG by recency), APN geocoders (confirmed not duplicates, different input types). Fixed a `CN`/`CO` jurisdiction-code transposition in this doc's own reference table. |
 
 ---
 
@@ -424,4 +435,4 @@ Also check `access` (`public` vs `org`) and `licenseInfo` before relying on anyt
 - Everything here was verified on 2026-09-19 unless marked otherwise. Government GIS endpoints get reorganized. Re-verify before depending on a path.
 - None of this is a substitute for a title report, a survey, or a jurisdiction pre-application meeting. It narrows the funnel, it does not confirm entitlement.
 - Lidar-derived slope is bare earth. It will not reflect post-collection grading, retaining walls, or fill.
-- The "needs reconciliation" items in Section 5 are unresolved. Treat both sides of each conflict as unverified until tested against the same point/parcel.
+- The Section 5 reconciliation results are from a single test pass (171-point sample for SB 9, full-table diffs for the two confirmed duplicates). The SB 9 authority call rests on recency alone, not independent verification against CAL FIRE — see the caveat in that row.

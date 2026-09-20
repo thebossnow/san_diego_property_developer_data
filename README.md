@@ -16,7 +16,7 @@ All services are unauthenticated REST APIs serving GeoJSON/JSON from SANDAG's re
 ## Documentation
 
 See [docs/San_Diego_GIS__Parcel_Data_APIs___Reference.md](docs/San_Diego_GIS__Parcel_Data_APIs___Reference.md) for:
-- Complete field schemas for all 373+ hosted layers
+- Field schemas for the ~20 services explored so far (of 373+ SANDAG hosts alone; most of that catalog is still unexplored)
 - Live curl examples for each API endpoint
 - Targeted use cases (floorplan intake, feasibility screening, site search)
 - Coverage notes (unincorporated vs. incorporated city)
@@ -30,15 +30,17 @@ See [docs/Public_GIS_Elevation_API_Reference.md](docs/Public_GIS_Elevation_API_R
 
 All endpoints below are publicly accessible, unauthenticated Esri ArcGIS REST services maintained by San Diego County and SANDAG. No API key or login is required.
 
-### San Diego County — one API
+### San Diego County — not just one API
 
-One MapServer, `PPM_PublicAGO`, with a few layers underneath it:
+`gis-public.sandiegocounty.gov` hosts roughly 150 services across 26 folders, not just one MapServer. The parcel data reference below documents the assessor/zoning MapServer; the elevation/GIS reference documents ~20 additional County-hosted layers (floodplain, active faults, MSCP habitat, wetlands, sewer vs. septic, Coastal Commission jurisdiction, farmland mapping, VMT screening, building footprints) that have no SANDAG equivalent and are load-bearing for development feasibility screening — a parcel that clears zoning can still die on one of these.
 
 - `https://gis-public.sandiegocounty.gov/arcgis/rest/services/PPM_PublicAGO/MapServer`
   - Layer 0 — Assessor parcels (values, acreage, building details, zone/use codes)
   - Layer 1 — General Plan (unincorporated county)
   - Layer 2 — Zoning (unincorporated county)
   - Table — Road name reference
+
+See [docs/Public_GIS_Elevation_API_Reference.md](docs/Public_GIS_Elevation_API_Reference.md), Section 5, for the constraint layers, plus five County services confirmed to overlap SANDAG's data (two are byte-identical duplicates, one is a real data conflict, two turned out not to be duplicates at all).
 
 ### SANDAG regional GIS — one host, three service types, hundreds of services
 
