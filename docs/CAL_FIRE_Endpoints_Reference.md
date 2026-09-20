@@ -210,9 +210,92 @@ Findings and gotchas:
   other incorporated parcels are generally LRA (not tested here), and local VHFHSZ adoption is still
   unchecked (see below).
 
+## Verified: City of San Diego adopts a larger zone than the state layer
+
+Tested 2026-09-19. Local agencies adopt their own VHFHSZ by ordinance under
+Gov Code 51179 (within 120 days of the State Fire Marshal's
+recommendation), and in LRA they can add to the state map but not reduce
+it. So for a parcel inside an incorporated city, the state LRA layer above
+is a floor, not the answer.
+
+City of San Diego: Ordinance O-21992, adopted by City Council 2025-07-29,
+effective 2025-08-30. Per the City's FHSZ page, the adopted map "includes
+additional areas not defined by the State."
+https://www.sandiego.gov/fire/community-risk-reduction/fire-zone-map
+
+Current City layer (use this one):
+https://webmaps.sandiego.gov/arcgis/rest/services/SDFR/Fire_Public/MapServer/0
+
+- MapServer layer 0, `FIRE_HAZARD_SEVERITY_ZONE`, capabilities Map,Query,Data,
+  maxRecordCount 2000, SR 102646 (State Plane CA VI, feet).
+- Fields: OBJECTID, LRA, FHSZ_Description, Shape_Length, Shape_Area.
+- One feature only: a single dissolved multipart polygon
+  (`LRA` = "City of San Diego", `FHSZ_Description` = "Very High"). A
+  point-in-polygon hit means inside the City's Very High zone. An empty
+  result means outside the City's Very High zone, not "no hazard", so still
+  run the state layers.
+- This is the layer the City's current web map (modified 2026-02-05) draws
+  as "Very High Fire Hazard Severity Zone - Effective August 30th, 2025".
+
+Other City layers seen, not current:
+
+| Layer | What it is |
+| --- | --- |
+| https://webmaps.sandiego.gov/arcgis/rest/services/DSD/Fire/MapServer/6 | "Current City ... VHFHSZ (2009)" in the older web map. 84 features, fields FEATURE_NM, FEATURE_DE. Superseded 2025-08-30. |
+| https://webmaps.sandiego.gov/arcgis/rest/services/Hosted/COSD_FHSZ_LRA/FeatureServer/21 | `COSD_CalFire_FHSZ_LRA_Dissolve`, labelled "Proposed ... Effective August 30th, 2025" in the older web map. Query-only, one feature, no class field. Not compared against the SDFR layer, so prefer the SDFR one. |
+
+How the layers were found: the City's viewer is an Experience Builder app,
+so it has no REST endpoint itself. Reading the item JSON exposes the web map
+IDs, and the web map JSON lists the layer URLs:
+
+```
+https://www.arcgis.com/sharing/rest/content/items/<experienceId>/data?f=json
+https://www.arcgis.com/sharing/rest/content/items/<webmapId>/data?f=json   (operationalLayers[].url)
+```
+
+City experience: https://experience.arcgis.com/experience/5738ea10437f49f39c3e6406deb8f74f
+(two of its four item IDs were not publicly readable).
+
+How much larger is it? Sampled a 0.01 degree grid (about 1 km) over the
+City's Very High polygon: 542 points fell inside it. The state 2025 LRA
+layer classed those points as:
+
+| State 2025 LRA class at the point | Points | Share |
+| --- | --- | --- |
+| Very High | 281 | 52% |
+| High | 80 | 15% |
+| Moderate | 37 | 7% |
+| NonWildland | 139 | 26% |
+| No feature returned | 5 | 1% |
+
+So roughly half of what the City treats as Very High is not Very High in
+the state recommendation. Caveats: this is a point sample, not an area
+calculation; the City polygon was simplified with `maxAllowableOffset=0.0002`
+(about 20 m) before sampling, so points near the edge can misclassify; and
+the reverse direction (state Very High outside the City polygon) was not
+tested.
+
+Do not use the County OES layer for LRA zones:
+`gis-public.sandiegocounty.gov/arcgis/rest/services/hosted/OES_KnowYourHazards_Wildfire_1/FeatureServer/0`
+(fields fhsz, fhsz_description, haz_class). Its own description calls it an
+interim combination of the 2024 SRA map and the 2007-2011 LRA
+recommendations, so it predates the 2025 LRA map.
+
+Other incorporated cities (leads only, not verified against city sources):
+- CAL FIRE/OSFM guidance surfaced in search says local agencies are not
+  required to report adoption and CAL FIRE keeps no list of who adopted
+  what. There is no authoritative statewide source for local adoption.
+- Chula Vista has its own ordinance and map (CVMC ch. 15.34, "City of
+  Chula Vista - San Diego County LRA FHSZ" map).
+- Escondido said the City Council would adopt the 2025 maps by ordinance
+  within 120 days of the 2025-03-24 release.
+- Oceanside and the remaining cities were not researched.
+
 ## Still to evaluate
 
+Local adoption in the other 17 incorporated cities and the unincorporated
+County (start with Chula Vista, Escondido, Oceanside, Carlsbad, El Cajon,
+San Marcos, Santee). Whether any publish a queryable layer or only a PDF
+map.
 Other constraint layers: FEMA flood, Alquist-Priolo fault zones, liquefaction,
 county zoning and general plan services.
-Local jurisdiction VHFHSZ adoption, cities may adopt zones more restrictive
-than the CAL FIRE LRA recommendation, so the state layer may understate.
