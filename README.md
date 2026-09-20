@@ -44,6 +44,8 @@ All endpoints below are publicly accessible, unauthenticated Esri ArcGIS REST se
 
 See [docs/San_Diego_County_Constraint_Layers_Reference.md](docs/San_Diego_County_Constraint_Layers_Reference.md) for the constraint layers, plus five County services confirmed to overlap SANDAG's data (two are byte-identical duplicates, one is a real data conflict, two turned out not to be duplicates at all).
 
+See [docs/CAL_FIRE_Endpoints_Reference.md](docs/CAL_FIRE_Endpoints_Reference.md) for statewide fire hazard severity zones (SRA/LRA), historic fire perimeters (burn history), and the AB 38 disclosure requirements that follow from a High/Very High result. These are statewide services, so they apply to any parcel in the county.
+
 ### SANDAG regional GIS — one host, three service types, hundreds of services
 
 Everything lives on the same ArcGIS Server/Portal instance (`geo.sandag.org`), but unlike the county it is not one API with a few layers. It's one host publishing **373 hosted FeatureServer items** individually, plus two other API types entirely. We've only explored a fraction of the 373 so far — there's likely a lot more useful data in there we haven't looked at yet.
