@@ -21,6 +21,11 @@ See [docs/San_Diego_GIS__Parcel_Data_APIs___Reference.md](docs/San_Diego_GIS__Pa
 - Targeted use cases (floorplan intake, feasibility screening, site search)
 - Coverage notes (unincorporated vs. incorporated city)
 
+See [docs/Public_GIS_Elevation_API_Reference.md](docs/Public_GIS_Elevation_API_Reference.md) for:
+- USGS 3DEP elevation API (point elevation, slope, contours, raster export)
+- Lidar data vintage gaps relevant to grading/slope screening
+- County-hosted environmental, hazard, and infrastructure overlays (floodplain, faults, conservation, easements, utilities) not covered by the parcel data reference above
+
 ## API endpoints referenced
 
 All endpoints below are publicly accessible, unauthenticated Esri ArcGIS REST services maintained by San Diego County and SANDAG. No API key or login is required.

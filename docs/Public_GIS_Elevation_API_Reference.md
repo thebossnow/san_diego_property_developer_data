@@ -4,6 +4,8 @@
 **Status of findings:** All endpoints below were called live and verified on 2026-09-19. Response values quoted are actual returns, not documentation claims.
 **Auth:** Every endpoint in this document is public. No API key, no token, no login. Exceptions are noted explicitly.
 
+**See also:** [`San_Diego_GIS__Parcel_Data_APIs___Reference.md`](San_Diego_GIS__Parcel_Data_APIs___Reference.md) is the authoritative reference for parcels, zoning, general plan, state housing law screening (SB 9/35/6, AB 2011/803), transit/TOD layers, address points, and geocoding, mostly on SANDAG's `geo.sandag.org`. This document does not repeat that ground. It covers two things that doc doesn't: USGS elevation/lidar, and County-hosted environmental/hazard/infrastructure layers on `gis-public.sandiegocounty.gov` that have no SANDAG equivalent.
+
 ---
 
 ## Table of Contents
@@ -12,7 +14,7 @@
 2. [USGS 3DEP Elevation (ArcGIS ImageServer)](#2-usgs-3dep-elevation-arcgis-imageserver)
 3. [The National Map Access API](#3-the-national-map-access-api)
 4. [Data Vintage Problem](#4-data-vintage-problem)
-5. [SanGIS / San Diego County ArcGIS Server](#5-sangis--san-diego-county-arcgis-server)
+5. [SanGIS / San Diego County: Environmental, Hazard & Infrastructure Layers](#5-sangis--san-diego-county-environmental-hazard--infrastructure-layers)
 6. [ArcGIS REST Patterns You Will Reuse](#6-arcgis-rest-patterns-you-will-reuse)
 7. [Known Gaps and Next Steps](#7-known-gaps-and-next-steps)
 8. [Appendix: How to Inspect Any ArcGIS Online Item](#8-appendix-how-to-inspect-any-arcgis-online-item)
@@ -26,7 +28,8 @@
 | Point elevation, slope, contours, hillshade | `elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer` | none | yes |
 | Newest raw DEM / lidar downloads | `tnmaccess.nationalmap.gov/api/v1/products` | none | yes |
 | Lidar coverage + vintage footprints | `index.nationalmap.gov/arcgis/rest/services/3DEPElevationIndex/MapServer` | none | 200 OK |
-| Parcels, zoning, constraints, housing law flags | `gis-public.sandiegocounty.gov/arcgis/rest/services` | none | yes |
+| Parcels, zoning, housing law, transit (SANDAG) | `geo.sandag.org/server/rest/services/Hosted` | none | see other doc |
+| Environmental, hazard, and infrastructure overlays (County) | `gis-public.sandiegocounty.gov/arcgis/rest/services/sdep_warehouse` | none | yes |
 | Point clouds, server side DEM derivation | `portal.opentopography.org` | free key | 200 OK |
 
 ---
@@ -221,13 +224,13 @@ https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/1m/Projects/CA_SanDieg
 
 ---
 
-## 5. SanGIS / San Diego County ArcGIS Server
+## 5. SanGIS / San Diego County: Environmental, Hazard & Infrastructure Layers
 
 ```
 https://gis-public.sandiegocounty.gov/arcgis/rest/services
 ```
 
-Public, no auth. 26 folders, roughly 150 services. Most useful content is in `sdep_warehouse` and `cosd_warehouse`.
+Public, no auth. 26 folders, roughly 150 services. This section only covers content in `sdep_warehouse` that has **no SANDAG equivalent** — floodplain, faults, conservation, easements, utilities, and similar overlay layers used for hard-constraint screening. Parcels, zoning, general plan, housing law, and geocoding are covered in the other doc and are intentionally left out here; see the reconciliation notes below for the overlapping services this pass found on the County server but did not fully verify against SANDAG's versions of the same data.
 
 ### Folder index
 
@@ -237,17 +240,13 @@ devtracker, DPR, DPW, HCD, HHSA, Hosted, LAFCO, OES, PDS, rov,
 SDCFA, sdep2_workspace, sdep_warehouse, SDSO, Tools, Utilities, WWM
 ```
 
-### High-value services
+### High-value services (not duplicated elsewhere)
 
 | Service path | Contents |
 |---|---|
-| `cosd_warehouse/parcels_all_for_public_use/MapServer/0` | Assessor parcels, countywide, redacted |
-| `sdep_warehouse/HOUSING_LAWS/FeatureServer/0` | State housing law eligibility flags |
-| `sdep_warehouse/ZONING_CN` | Zoning, unincorporated county only |
 | `sdep_warehouse/BUILDING_OUTLINES` | Building footprints (SANDAG SPACECORE) |
 | `sdep_warehouse/CMTY_GP_HOUSING_ELEM_INV_EXST` | Housing element site inventory |
-| `sdep_warehouse/CMTY_GENERAL_PLAN_CN` | General plan land use |
-| `sdep_warehouse/CMTY_PLAN_CN` | Community plan areas |
+| `sdep_warehouse/CMTY_PLAN_CN` | Community plan areas, unincorporated county |
 | `sdep_warehouse/VMT_INFILL_CN` | VMT infill areas |
 | `sdep_warehouse/VMT_EFFICIENT_CN` / `_RES_CN` / `_EMP_CN` / `_SP_CN` | VMT efficiency screening |
 | `sdep_warehouse/HYD_FLOODPL` | Floodplain |
@@ -263,69 +262,44 @@ SDCFA, sdep2_workspace, sdep_warehouse, SDSO, Tools, Utilities, WWM
 | `sdep_warehouse/COASTAL_OVERLAY_ZONE_CN` | Coastal Commission jurisdiction |
 | `sdep_warehouse/AG_FMMP` | Farmland Mapping and Monitoring Program |
 | `sdep_warehouse/JUR_MUNICIPAL` | City boundaries |
-| `sdep_warehouse/ROADS_ALL`, `ROAD_SEGMENTS` | Road network |
+| `sdep_warehouse/ROADS_ALL`, `ROAD_SEGMENTS` | Road network geometry (distinct from the County's `SANGIS.TBL_ROAD_NAME` lookup table in the other doc, which is names only, no geometry) |
 | `sdep_warehouse/PUBSAFETY_EVAC_ZONES` | Evacuation zones |
 | `sdep_warehouse/CENSUS_TRACT_TIGER2020` | Census tracts |
 | `sdep_warehouse/HLTH_HPI_3_0` | Healthy Places Index |
-| Root: `ADDRAPN` GeocodeServer | Address to APN geocoding |
-| Root: `SB9_CRITERIA_MET_01072024` | Standalone SB 9 map service |
-| Root: `parcels` via `PDS/ISRP_PARCELS` | Initial Study Research Packet parcels |
+| Root: `PDS/ISRP_PARCELS` | Initial Study Research Packet parcels |
 | Root: `InitialResearchPacketV2` GPServer | Geoprocessing service that builds a county research packet |
 
-### `parcels_all_for_public_use` layer 0 schema
+### Needs reconciliation — do not treat as authoritative yet
+
+These County-hosted services cover the same subject matter as a service already verified in the other doc, on a different host, and were **not** cross-checked against each other in this pass. Before relying on either, confirm they agree:
+
+| County service (this pass, unverified against SANDAG) | Overlaps with (other doc, verified) | Discrepancy found |
+|---|---|---|
+| `cosd_warehouse/parcels_all_for_public_use/MapServer/0` | County `PPM_PublicAGO/MapServer` Layer 0 | This layer's description says "redacted for public use," no assessed value or owner-occupied flag. `PPM_PublicAGO` Layer 0 has `ASR_LAND`/`ASR_IMPR`/`ASR_TOTAL` and `OWNEROCC`. Same host, two parcel services, different data. Unclear which is current. |
+| `sdep_warehouse/HOUSING_LAWS/FeatureServer/0` | SANDAG `Housing_Laws` (and the five per-bill layers) | This layer's `JURI` field has both `INC` and `UNINC` values, implying incorporated cities are scored. The SANDAG version was verified to return `N/A` on every criterion for `juri=UNINC`... i.e., it only scores unincorporated county, and returns `N/A` inside incorporated cities. Directly conflicting claims about incorporated-city coverage. Needs a same-point test against both. |
+| `sdep_warehouse/ZONING_CN` | SANDAG `Zoning_Unincorporated` | Other doc states `Zoning_Unincorporated` is "the SANDAG mirror of the County's own Zoning layer (identical schema)." `ZONING_CN` is very likely the same underlying source. Not worth a separate integration unless a schema diff turns up. |
+| Root `SB9_CRITERIA_MET_01072024` (standalone MapService) | SANDAG `Senate_Bill_9` | Likely a snapshot of the same SB 9 screening the SANDAG layer already covers in more depth (category, urban areas, FHSZ, environmental flags). Not separately verified. |
+| Root `ADDRAPN` GeocodeServer | SANDAG `Parcels_APN_Locator` | Both claim to geocode by APN. Not compared for coverage or match behavior. |
+
+### Jurisdiction codes
+
+Used across both the County and SANDAG services on fields like `situs_juris`, `overlay_juris`, and `JURI` (values differ slightly, `CO`/`UNINC` vs `INC` depending on the service):
 
 ```
-OBJECTID, APN, APN_8, SITUS_JURIS, SITUS_STREET, SITUS_SUFFIX,
-SITUS_POST_DIR, SITUS_PRE_DIR, SITUS_ADDRESS, SITUS_FRACTION,
-SITUS_BUILDING, SITUS_SUITE, ACREAGE, QUAL_CLASS_SHAPE, SITUS_ZIP, Shape
-```
-
-- `maxRecordCount`: 1000
-- Geometry: polygon
-- Description states it is "redacted for public use". **No owner name, no assessed value, no land use code.**
-
-`SITUS_JURIS` codes observed:
-
-```
-CB Carlsbad      CN Coronado      CO County/unincorporated   CV Chula Vista
+CB Carlsbad      CN Coronado      CO/UNINC County/unincorporated   CV Chula Vista
 DM Del Mar       EC El Cajon      EN Encinitas               ES Escondido
 IB Imperial Beach LG Lemon Grove  LM La Mesa                 NC National City
 OC Oceanside     PW Poway         SD San Diego               SM San Marcos
 SO Solana Beach  ST Santee        VS Vista                   None
 ```
 
-Verified: `SITUS_JURIS='VS'` returns 24,959 parcels.
-
-### `HOUSING_LAWS` layer 0 schema
-
-```
-OBJECTID, SB9_CRITERIA_MET, SB35_CRITERIA_MET, SB6_CRITERIA_MET,
-AB2011_CRITERIA_MET, SB684_CRITERIA_MET, AB803_CRITERIA_MET,
-AB130_CRITERIA_MET, Eligible_For_Streamlining, JURI, Shape
-```
-
-- 8,968 features total
-- `JURI` values: `INC`, `UNINC`. Both incorporated cities and unincorporated county are covered.
-- `maxRecordCount`: 2000
-
-Example:
-
-```bash
-curl -s -G "https://gis-public.sandiegocounty.gov/arcgis/rest/services/sdep_warehouse/HOUSING_LAWS/FeatureServer/0/query" \
-  --data-urlencode "where=Eligible_For_Streamlining IS NOT NULL" \
-  --data-urlencode "outFields=*" \
-  --data-urlencode "outSR=4326" \
-  --data-urlencode "f=json"
-```
-
 ### SanGIS gotchas
 
-1. **No SB 79 layer exists.** HOUSING_LAWS stops at AB 130. Transit-proximity tiering has to be built from SANDAG transit stops plus your own buffers.
-2. **`ZONING_CN` is unincorporated only.** Service description states it regulates "the unincorporated (non-city) portions of the County". Vista, Carlsbad, Oceanside, Escondido, San Marcos zoning is NOT here. Each city runs its own GIS. This is the biggest gap for SB 79 work, since most SB 79 sites sit inside city limits.
-3. **MapServer vs FeatureServer.** Several MapServer endpoints reject `/query` with `"The requested capability is not supported"`. `HOUSING_LAWS/MapServer` is one of them. Always try the FeatureServer variant.
-4. **Native spatial reference is 2230** (NAD83 California State Plane Zone 6, US survey feet). Pass `outSR=4326` if you want lat/lon back.
-5. **Paginate.** Parcels cap at 1000 per request, most others at 2000. Use `resultOffset` and `resultRecordCount`.
-6. **`returnDistinctValues=true` still respects maxRecordCount**, so a distinct query on a large layer can be incomplete. Verify with `returnCountOnly` first.
+1. **No SB 79 layer exists** on either host. Transit-proximity tiering has to be built from SANDAG's `Transit_Stops_GTFS` (see other doc) plus your own buffers.
+2. **MapServer vs FeatureServer.** Several MapServer endpoints reject `/query` with `"The requested capability is not supported"` (`sdep_warehouse/HOUSING_LAWS/MapServer` is one). Always try the FeatureServer variant first.
+3. **Native spatial reference is 2230** (NAD83 California State Plane Zone 6, US survey feet), same as the SANDAG services. Pass `outSR=4326` if you want lat/lon back.
+4. **Paginate.** Most layers cap at 1000-2000 records per request. Use `resultOffset` and `resultRecordCount` with `orderByFields` for stable ordering.
+5. **`returnDistinctValues=true` still respects maxRecordCount**, so a distinct query on a large layer can be incomplete. Verify with `returnCountOnly` first.
 
 ---
 
@@ -386,25 +360,28 @@ esriSpatialRelEnvelopeIntersects   fastest, least precise
 
 Ordered by impact on SB 79 site screening.
 
-1. **City-level zoning.** Not on the county server. Need per-city ArcGIS endpoints for Vista, Carlsbad, Oceanside, Escondido, San Marcos, and San Diego. Not yet enumerated.
-2. **Transit stops and frequency.** SB 79 tiers key off proximity to major transit stops and high-quality transit corridors. SANDAG runs a regional open data portal. Not yet verified.
-3. **Ownership and assessed value.** County public parcels layer is redacted. Still requires Realist, CRMLS, or the ARCC side.
-4. **SB 79 tier geometry.** Has to be constructed. Nothing publishes it as a layer yet.
-5. **Fire hazard severity zones (CAL FIRE FHSZ).** Not located on the county server in this pass. State endpoint likely exists.
-6. **Slope-based constrained-area deductions.** Several jurisdictions deduct steep slope from developable area in density calcs. Compute from the D24 DEM.
+1. **City-level zoning beyond San Diego.** Confirmed published for City of San Diego (`Zoning_Base_SD`) and unincorporated county only. Vista, Carlsbad, Oceanside, Escondido, San Marcos zoning is not on either GIS platform found so far. Each city likely runs its own GIS, not yet enumerated.
+2. **Owner identity (name).** Neither parcels service (County or SANDAG) publishes an owner name field, only an owner-occupied flag. Assessed value itself is already available (`PPM_PublicAGO` Layer 0, see other doc). Owner name still requires Realist, CRMLS, or the ARCC side.
+3. **SB 79 tier geometry.** Nothing publishes SB 79's own "major transit stop" / tier determination as a layer. Has to be built from `Transit_Stops_GTFS` plus the statute's own distance/frequency thresholds.
+4. **Fire hazard severity zones (CAL FIRE FHSZ).** Referenced as fields inside some SANDAG housing-law layers (`fhsz_very_high`, etc.) but no standalone FHSZ layer located on either county server. A CAL FIRE state endpoint likely exists, not yet checked.
+5. **Slope-based constrained-area deductions.** Several jurisdictions deduct steep slope from developable area in density calcs. Compute from the D24 DEM once finalist sites are picked (Section 4).
+6. **Reconciliation items above.** The five County/SANDAG overlapping services in the table in Section 5 need a same-point comparison before either is trusted for a specific parcel.
 
-### Candidate pipeline once gaps are closed
+### Candidate pipeline
 
 ```
-1. Pull candidate parcels          -> parcels_all_for_public_use, filter SITUS_JURIS + ACREAGE
-2. Filter to transit tier          -> SANDAG stops + buffer (TO BUILD)
-3. Check zoning / base density     -> city GIS (TO FIND) or ZONING_CN if unincorporated
+1. Pull candidate parcels          -> SANDAG Hosted/Parcels, filter situs_juris + acreage (other doc)
+2. Filter to transit tier          -> SANDAG Transit_Stops_GTFS + buffer (verified, other doc);
+                                      SB 79's own tier thresholds still TO BUILD on top of it
+3. Check zoning / base density     -> Zoning_Unincorporated (CN) or Zoning_Base_SD (City of SD);
+                                      other cities TO FIND
 4. Screen hard constraints         -> HYD_FLOODPL, ECO_MSCP_CN, GEOLOGY_ACTIVE_FAULTS_CN,
-                                      ESMT_OPEN_SPACE, COASTAL_OVERLAY_ZONE_CN, AG_FMMP
-5. Check streamlining eligibility   -> HOUSING_LAWS (SB35, AB2011, SB684, AB130)
-6. Check utilities                  -> WW_SEPTIC_SEWER_PUBLIC
-7. Terrain / grading cost           -> 3DEP computeStatisticsHistograms, then D24 DEM for finalists
-8. Existing improvements            -> BUILDING_OUTLINES
+                                      ESMT_OPEN_SPACE, COASTAL_OVERLAY_ZONE_CN, AG_FMMP (this doc)
+5. Check streamlining eligibility   -> SANDAG Housing_Laws (verified UNINC-only, other doc);
+                                      cross-check against sdep_warehouse/HOUSING_LAWS once reconciled
+6. Check utilities                  -> WW_SEPTIC_SEWER_PUBLIC (this doc)
+7. Terrain / grading cost           -> 3DEP computeStatisticsHistograms, then D24 DEM for finalists (this doc)
+8. Existing improvements            -> BUILDING_OUTLINES (this doc)
 ```
 
 ---
@@ -438,11 +415,13 @@ Also check `access` (`public` vs `org`) and `licenseInfo` before relying on anyt
 | Date | Change |
 |---|---|
 | 2026-09-19 | Initial. 3DEP ImageServer, TNM Access API, SanGIS enumeration, vintage analysis. |
+| 2026-09-20 | Reconciled against `San_Diego_GIS__Parcel_Data_APIs___Reference.md`. Dropped/flagged County-side parcels, zoning, and housing-law claims that conflicted with or duplicated the SANDAG-verified versions. Trimmed Known Gaps to remove items already solved in that doc. |
 
 ---
 
 ## Caveats
 
-- Everything here was verified on 2026-09-19. Government GIS endpoints get reorganized. Re-verify before depending on a path.
+- Everything here was verified on 2026-09-19 unless marked otherwise. Government GIS endpoints get reorganized. Re-verify before depending on a path.
 - None of this is a substitute for a title report, a survey, or a jurisdiction pre-application meeting. It narrows the funnel, it does not confirm entitlement.
 - Lidar-derived slope is bare earth. It will not reflect post-collection grading, retaining walls, or fill.
+- The "needs reconciliation" items in Section 5 are unresolved. Treat both sides of each conflict as unverified until tested against the same point/parcel.
