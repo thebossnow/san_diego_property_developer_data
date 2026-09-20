@@ -2,16 +2,17 @@
 
 2026-09-19 · @Someone
 
-Every REST API and service explored across San Diego County's GIS and SANDAG's regional GIS platform: full field schemas, example queries, and who each one serves.
+Every REST API and service explored across San Diego County's GIS, SANDAG's regional GIS platform, and USGS's national elevation service: full field schemas, example queries, and who each one serves.
 
 ## Overview
 
-Two separate GIS systems were probed. Both are Esri ArcGIS REST services, unauthenticated, JSON/GeoJSON responses.
+Three separate systems were probed. All are Esri ArcGIS REST services and unauthenticated. County and SANDAG serve vector data as JSON/GeoJSON; USGS serves raster elevation (JSON, or a binary GeoTIFF).
 
 | System | Root | Scope |
 | --- | --- | --- |
 | San Diego County | `gis-public.sandiegocounty.gov/arcgis/rest/services` | Assessor parcels, county-only zoning/GP |
 | SANDAG regional | `geo.sandag.org/server/rest/services` | 373 hosted layers: parcels with addresses, city + county zoning, state housing law screens, transit, geocoders |
+| USGS 3DEP | `elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer` | Nationwide bare-earth elevation raster (1 m lidar-derived in San Diego): point elevation, slope, aspect, profiles, parcel terrain stats, GeoTIFF export |
 
 SANDAG is the deeper resource. Its `Hosted/Parcels` layer alone replaces the County's Assessor layer and adds the address field the County service lacks. Use County only if you specifically need its layer numbering; otherwise SANDAG covers everything County does and more.
 
@@ -270,6 +271,130 @@ curl -G "https://geo.sandag.org/server/rest/services/SANDAG_COMPOSITE_LOCATOR/Ge
   --data-urlencode "SingleLine=1589 Aldorado Dr, Vista, CA 92084" \
   --data-urlencode "outFields=*" --data-urlencode "f=json"
 ```
+
+## USGS 3DEP — Bare-earth elevation (ImageServer)
+
+The one raster service in this reference, and the only one not hosted by SANDAG or the County. It is the USGS 3D Elevation Program (3DEP) bare-earth DEM, published as a public ArcGIS **ImageServer** — no key, no auth. Everything else here returns vector features; this returns pixel values, so the query shapes are different (`getSamples`, `identify`, `exportImage`, `computeStatisticsHistograms` rather than `query` on a layer).
+
+**Endpoint:** `elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer`
+
+An ArcGIS Online item titled "USGS 3D Elevation" (an Image Service, listed under NCDOT's account) also turns up in searches. It is only a pointer to this USGS service — call the USGS URL directly.
+
+**Targeted user:** anyone who needs terrain for a specific site — a GC estimating grading and retaining walls, a developer screening hillside lots for slope, a floorplan/feasibility tool that needs pad elevation or how much a lot falls across its width. Pair it with `Hosted/Parcels` above: take a parcel's polygon from SANDAG, pass it here for elevation and slope statistics.
+
+### Service properties
+
+| Property | Value |
+| --- | --- |
+| Pixel type / bands | F32 (32-bit float), 1 band |
+| Native SRS | EPSG:3857 (`wkid` 102100) |
+| Vertical units / datum | Meters, NAVD 88 (from the source-tile catalog) |
+| `maxImageHeight` / `maxImageWidth` | 8000 / 8000 |
+| `maxRecordCount` | 2000 |
+| Advertised `capabilities` | `Image,Metadata,Catalog` — `getSamples`, `identify` and `computeStatisticsHistograms` all work anyway; don't gate on this list |
+| Output formats | `f=json` or `f=image` (binary GeoTIFF via `format=tiff`); no `f=geojson` |
+
+Input geometry can be sent in any SRS by putting `spatialReference` in the geometry JSON (or `inSR`): both WGS84 (`4326`) and State Plane VI feet (`2230`, the SANDAG/County native SRS) were confirmed. **Returned elevations are always meters** even when the query geometry is in feet — multiply by 3.28084 for feet.
+
+### Operations
+
+| Operation | Use | Notes |
+| --- | --- | --- |
+| `getSamples` | Elevation at a point, or along a line | Response includes `value` (meters), `resolution` (source pixel size in meters — `1` in San Diego), and `rasterId` (the catalog footprint that supplied the value, see `query` below). A polyline with `sampleCount=5` returned 6 samples (both endpoints included). |
+| `identify` | Elevation, or slope/aspect, at a point | Add `renderingRule={"rasterFunction":"Slope Degrees"}` or `"Aspect Degrees"`. Values come back as whole degrees (rounded). |
+| `computeStatisticsHistograms` | min/max/mean/stdev/median over a polygon | Best call for parcel-level terrain. Also accepts `renderingRule` for slope. |
+| `exportImage` | Clip the DEM to a bbox | `format=tiff&pixelType=F32&f=image` returns the GeoTIFF bytes directly; `f=json` returns an `href` instead. Cap of 8000×8000 px. |
+| `query` | Which source datasets cover a point | Catalog footprints with `Name`, `Source`, `AcquisitionDate`, `VerticalDatum`, `Resolution_X`. **Pass both `inSR` and `spatialRel=esriSpatialRelIntersects`** — a first attempt without them returned unfiltered tiles from across North America. |
+
+Rendering functions published on this service (`renderingRule`): Hillshade Gray, Hillshade Multidirectional, Hillshade Elevation Tinted, Hillshade Gray-Stretch, Slope Degrees, Slope Map, Aspect Degrees, Aspect Map, Contour 25, Contour Smoothed 25, and 2/5/10 ft preset contour intervals. Only `Slope Degrees` and `Aspect Degrees` were exercised; the rest are listed from the service metadata.
+
+### Worked example — 1589 Aldorado Dr, Vista (APN 1263404600)
+
+All results below were run against the live service on 2026-09-19.
+
+| Question | Result |
+| --- | --- |
+| Elevation at the SANDAG `Address_Points` location | 108.78 m (356.9 ft) |
+| Elevation range across the parcel | 84.6 m – 117.7 m, about 33 m (108 ft) of relief |
+| Mean slope across the parcel | 14.1° (about 25% grade); max 49° |
+| Source dataset at that point | `CA_SanDiegoQL2_2014`, 1 m, acquired 2015-02-17, NAVD 88 |
+
+Independent cross-check: exporting the DEM for the parcel bbox as a GeoTIFF and averaging inside the polygon myself gave mean 104.85 m, min 84.87 m, max 117.62 m, versus the service's 104.66 m / 84.64 m / 117.67 m — within about 0.2 m.
+
+**Point elevation, State Plane input:**
+
+```bash
+curl -G "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/getSamples" \
+  --data-urlencode 'geometry={"x":6265639.39,"y":2039407.72,"spatialReference":{"wkid":2230}}' \
+  --data-urlencode "geometryType=esriGeometryPoint" \
+  --data-urlencode "returnFirstValueOnly=true" \
+  --data-urlencode "f=json"
+```
+
+Returns `value=108.776802063`, `resolution=1`, `rasterId=44845`.
+
+**Slope at a point (WGS84):**
+
+```bash
+curl -G "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/identify" \
+  --data-urlencode 'geometry={"x":-117.2,"y":33.2,"spatialReference":{"wkid":4326}}' \
+  --data-urlencode "geometryType=esriGeometryPoint" \
+  --data-urlencode 'renderingRule={"rasterFunction":"Slope Degrees"}' \
+  --data-urlencode "returnGeometry=false" --data-urlencode "f=json"
+```
+
+**Elevation and slope statistics over a parcel** — pass the parcel polygon from `Hosted/Parcels` (with `returnGeometry=true`, State Plane 2230) as `geometry`, with `spatialReference` set to `2230`:
+
+```bash
+curl -G "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/computeStatisticsHistograms" \
+  --data-urlencode 'geometry={"rings":[[[6265860.74,2039179.68],[6265438.18,2039125.65],[6265439.57,2039260.65],[6265443.17,2039608.84],[6265865.09,2039604.73],[6265860.74,2039179.68]]],"spatialReference":{"wkid":2230}}' \
+  --data-urlencode "geometryType=esriGeometryPolygon" \
+  --data-urlencode "f=json"
+```
+
+Add `--data-urlencode 'renderingRule={"rasterFunction":"Slope Degrees"}'` for slope instead of elevation. Read `statistics[0].min`, `.max`, `.mean`, `.standardDeviation`, `.median`.
+
+**Elevation profile along a line (6 samples):**
+
+```bash
+curl -G "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/getSamples" \
+  --data-urlencode 'geometry={"paths":[[[-117.2,33.2],[-117.199,33.2]]],"spatialReference":{"wkid":4326}}' \
+  --data-urlencode "geometryType=esriGeometryPolyline" \
+  --data-urlencode "sampleCount=5" --data-urlencode "returnFirstValueOnly=true" \
+  --data-urlencode "f=json"
+```
+
+**Clip the DEM to a bbox as a GeoTIFF (binary response):**
+
+```bash
+curl -G "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage" \
+  --data-urlencode "bbox=-117.2005,33.1995,-117.1995,33.2005" \
+  --data-urlencode "bboxSR=4326" --data-urlencode "imageSR=4326" \
+  --data-urlencode "size=64,64" --data-urlencode "format=tiff" \
+  --data-urlencode "pixelType=F32" --data-urlencode "interpolation=RSP_BilinearInterpolation" \
+  --data-urlencode "f=image" -o dem.tif
+```
+
+**Which source dataset covers a point:**
+
+```bash
+curl -G "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/query" \
+  --data-urlencode 'geometry={"x":6265639.39,"y":2039407.72,"spatialReference":{"wkid":2230}}' \
+  --data-urlencode "geometryType=esriGeometryPoint" --data-urlencode "inSR=2230" \
+  --data-urlencode "spatialRel=esriSpatialRelIntersects" \
+  --data-urlencode "outFields=Name,Source,VerticalDatum,AcquisitionDate,Resolution_X,LowPS,HighPS" \
+  --data-urlencode "returnGeometry=false" --data-urlencode "f=json"
+```
+
+Returned 19 overlapping footprints at that point: coarse national 1 and 1/3 arc-second tiles (`n34w118`, roughly 30 m and 10 m) plus the San Diego lidar collections (`CA_SanDiegoQL2_2014`, `CA_SanDiego_2015_C17_1`, `San_Diego_CA_2014_LiDAR`, `CA_SanDiegoCo_2016`). The service mosaics them; `getSamples` reports which one won via `rasterId` (matches the footprint's `OBJECTID`) and `resolution`. `AcquisitionDate` is epoch milliseconds.
+
+### Caveats
+
+- **Bare earth, not surface.** This is a DEM: buildings, trees and other structures are removed. It gives ground grade, not roof or canopy heights, and existing grading or fill after the acquisition date isn't reflected.
+- **Mosaic of collections from different years.** Coverage at your parcel may come from a 2014–2016 lidar collection. Check `AcquisitionDate` for recent grading or new subdivisions.
+- **Slope is integer degrees.** Pixel-level `identify` slope at 1 m is noisy on small features; use polygon statistics for site feasibility.
+- **Ignore `count` in the statistics response as a parcel pixel count.** For the Aldorado parcel it returned 25,591, about 1.4× what a 4.4-acre parcel holds at 1 m; the mean/min/max still matched the independent check above, but don't derive area from it.
+- **Rate limits and timeouts** were not characterized. Untested for batch use over many parcels.
 
 ## SANDAG — Portal sharing API
 
