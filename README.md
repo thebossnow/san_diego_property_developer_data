@@ -22,10 +22,11 @@ See [docs/San_Diego_GIS__Parcel_Data_APIs___Reference.md](docs/San_Diego_GIS__Pa
 - Targeted use cases (floorplan intake, feasibility screening, site search)
 - Coverage notes (unincorporated vs. incorporated city)
 
-See [docs/Public_GIS_Elevation_API_Reference.md](docs/Public_GIS_Elevation_API_Reference.md) for:
-- USGS 3DEP elevation API (point elevation, slope, contours, raster export)
-- Lidar data vintage gaps relevant to grading/slope screening
+See [docs/San_Diego_County_Constraint_Layers_Reference.md](docs/San_Diego_County_Constraint_Layers_Reference.md) for:
 - County-hosted environmental, hazard, and infrastructure overlays (floodplain, faults, conservation, easements, utilities) not covered by the parcel data reference above
+- Results of testing five County services against their apparent SANDAG counterparts — two confirmed byte-identical duplicates, one confirmed data conflict, two confirmed *not* duplicates despite similar names
+
+(USGS 3DEP elevation, the National Map Access API, and the lidar data-vintage gap are documented in the parcel data reference above, not here.)
 
 ## API endpoints referenced
 
@@ -33,7 +34,7 @@ All endpoints below are publicly accessible, unauthenticated Esri ArcGIS REST se
 
 ### San Diego County — not just one API
 
-`gis-public.sandiegocounty.gov` hosts roughly 150 services across 26 folders, not just one MapServer. The parcel data reference below documents the assessor/zoning MapServer; the elevation/GIS reference documents ~20 additional County-hosted layers (floodplain, active faults, MSCP habitat, wetlands, sewer vs. septic, Coastal Commission jurisdiction, farmland mapping, VMT screening, building footprints) that have no SANDAG equivalent and are load-bearing for development feasibility screening — a parcel that clears zoning can still die on one of these.
+`gis-public.sandiegocounty.gov` hosts roughly 150 services across 26 folders, not just one MapServer. The parcel data reference below documents the assessor/zoning MapServer; the constraint layers reference documents ~20 additional County-hosted layers (floodplain, active faults, MSCP habitat, wetlands, sewer vs. septic, Coastal Commission jurisdiction, farmland mapping, VMT screening, building footprints) that have no SANDAG equivalent and are load-bearing for development feasibility screening — a parcel that clears zoning can still die on one of these.
 
 - `https://gis-public.sandiegocounty.gov/arcgis/rest/services/PPM_PublicAGO/MapServer`
   - Layer 0 — Assessor parcels (values, acreage, building details, zone/use codes)
@@ -41,7 +42,7 @@ All endpoints below are publicly accessible, unauthenticated Esri ArcGIS REST se
   - Layer 2 — Zoning (unincorporated county)
   - Table — Road name reference
 
-See [docs/Public_GIS_Elevation_API_Reference.md](docs/Public_GIS_Elevation_API_Reference.md), Section 5, for the constraint layers, plus five County services confirmed to overlap SANDAG's data (two are byte-identical duplicates, one is a real data conflict, two turned out not to be duplicates at all).
+See [docs/San_Diego_County_Constraint_Layers_Reference.md](docs/San_Diego_County_Constraint_Layers_Reference.md) for the constraint layers, plus five County services confirmed to overlap SANDAG's data (two are byte-identical duplicates, one is a real data conflict, two turned out not to be duplicates at all).
 
 ### SANDAG regional GIS — one host, three service types, hundreds of services
 
@@ -74,7 +75,7 @@ A public ArcGIS **ImageServer** (raster, not vector features), nationwide, hoste
   - `exportImage` — clip the DEM to a bbox as a GeoTIFF
   - `query` — which source lidar collections cover a point
 
-Accepts WGS84 or State Plane (EPSG:2230) input, so SANDAG parcel geometry can be passed straight in. An ArcGIS Online item called "USGS 3D Elevation" (listed under NCDOT) only points to this service. See the [reference doc](docs/San_Diego_GIS__Parcel_Data_APIs___Reference.md#usgs-3dep--bare-earth-elevation-imageserver) for verified examples and caveats.
+Accepts WGS84 or State Plane (EPSG:2230) input, so SANDAG parcel geometry can be passed straight in. An ArcGIS Online item called "USGS 3D Elevation" (listed under NCDOT) only points to this service. **The ImageServer lags newest data by months to years** — confirmed a 2024 lidar collection (`CA_SanDiegoCo_D24`) published to USGS's staged products but absent from this service entirely; the [National Map Access API](https://tnmaccess.nationalmap.gov/api/v1/products) is the path to it. See the [reference doc](docs/San_Diego_GIS__Parcel_Data_APIs___Reference.md#usgs-3dep--bare-earth-elevation-imageserver) for verified examples, the vintage gap, and caveats.
 
 ## License
 

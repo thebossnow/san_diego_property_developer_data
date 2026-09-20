@@ -14,7 +14,7 @@ Three separate systems were probed. All are Esri ArcGIS REST services and unauth
 | SANDAG regional | `geo.sandag.org/server/rest/services` | 373 hosted layers: parcels with addresses, city + county zoning, state housing law screens, transit, geocoders |
 | USGS 3DEP | `elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer` | Nationwide bare-earth elevation raster (1 m lidar-derived in San Diego): point elevation, slope, aspect, profiles, parcel terrain stats, GeoTIFF export |
 
-SANDAG is the deeper resource. Its `Hosted/Parcels` layer alone replaces the County's Assessor layer and adds the address field the County service lacks. Use County only if you specifically need its layer numbering; otherwise SANDAG covers everything County does and more.
+SANDAG is the deeper resource for parcels, zoning, housing law, and transit — its `Hosted/Parcels` layer alone replaces the County's Assessor layer and adds the address field the County service lacks. But `gis-public.sandiegocounty.gov` hosts far more than the one MapServer below: `sdep_warehouse` alone holds roughly 100 services, including ~20 environmental/hazard/infrastructure constraint layers (floodplain, active faults, MSCP habitat, wetlands, Coastal Commission jurisdiction, farmland mapping, sewer vs. septic, building footprints) with no SANDAG equivalent at all. See `San_Diego_County_Constraint_Layers_Reference.md` for those and for five County/SANDAG service pairs that were tested directly against each other (two turned out to be byte-identical duplicates, one a real data conflict).
 
 Jurisdiction codes used throughout: `CN` = unincorporated county, `SD` = City of San Diego, `OC`/`CV`/`CB`/`ES`/`NC`/`VS` = other cities. County and SANDAG's Zoning/General Plan layers only populate for `CN`; City of San Diego has its own separate `_SD` layers; no other city's zoning was found published here.
 
@@ -395,6 +395,62 @@ Returned 19 overlapping footprints at that point: coarse national 1 and 1/3 arc-
 - **Slope is integer degrees.** Pixel-level `identify` slope at 1 m is noisy on small features; use polygon statistics for site feasibility.
 - **Ignore `count` in the statistics response as a parcel pixel count.** For the Aldorado parcel it returned 25,591, about 1.4× what a 4.4-acre parcel holds at 1 m; the mean/min/max still matched the independent check above, but don't derive area from it.
 - **Rate limits and timeouts** were not characterized. Untested for batch use over many parcels.
+
+### The National Map Access API — where the newest data actually is
+
+```
+https://tnmaccess.nationalmap.gov/api/v1/products
+```
+
+A separate USGS API, not the ImageServer above, no key required. This is where the **newest** lidar/DEM products live, ahead of the dynamic ImageServer mosaic — see the vintage gap immediately below for why that matters.
+
+**Example — newest 1 m DEM tiles over a bbox:**
+
+```bash
+curl -s -G "https://tnmaccess.nationalmap.gov/api/v1/products" \
+  --data-urlencode "datasets=Digital Elevation Model (DEM) 1 meter" \
+  --data-urlencode "bbox=-117.30,33.15,-117.15,33.25" \
+  --data-urlencode "max=10"
+```
+
+Useful `datasets` values: `Digital Elevation Model (DEM) 1 meter`, `Lidar Point Cloud (LPC)`, `National Elevation Dataset (NED) 1/3 arc-second`. Each item returns `title`, `publicationDate`, `dateCreated`, `format`, `sizeInBytes`, and `downloadURL` (an S3 URL under `prd-tnm.s3.amazonaws.com`).
+
+### Data vintage: the ImageServer lags staged products by months to years
+
+This is the single most important operational finding for grading/slope work, and it isn't visible from the ImageServer alone. Verified for the Vista / North County area:
+
+| Dataset | Collected | Published | In dynamic ImageServer? |
+| --- | --- | --- | --- |
+| `CA_SanDiegoQL2_2014` | Oct 2014–Feb 2015 | 2020-03-30 | yes — this is what `identify`/`getSamples` return today |
+| `San_Diego_CA_2014_LiDAR` | Oct 2014–Feb 2015 | 2024-04-25 | yes |
+| `CA_SanDiegoCo_2016` | Oct 2015–Nov 2016 | 2020-03-30 | yes |
+| `CA_CaliforniaGaps_B23` | Sep–Dec 2023 | 2025-08-20 | yes, but doesn't cover Vista |
+| **`CA_SanDiegoCo_D24`** | 2024 | **2026-09-14** | **NO** |
+
+Confirmed absent from the live mosaic:
+
+```bash
+curl -s -G "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/query" \
+  --data-urlencode "where=Name LIKE '%SanDiegoCo_D24%'" \
+  --data-urlencode "returnCountOnly=true" --data-urlencode "f=json"
+# -> {"count":0}
+```
+
+Direct download of the current-generation tile covering Vista (382 MB per 10,000×10,000 px tile):
+
+```
+https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/1m/Projects/CA_SanDiegoCo_D24/TIFF/USGS_1M_11_x47y368_CA_SanDiegoCo_D24.tif
+```
+
+**Decision rule:**
+
+| Situation | Use |
+| --- | --- |
+| Screening many candidate parcels fast | ImageServer `computeStatisticsHistograms`. 2014 data is fine — terrain hasn't moved. |
+| Underwriting a specific site | Pull the `CA_SanDiegoCo_D24` GeoTIFF via TNM Access and compute slope locally. |
+| Site had grading or demolition after 2014 | Must use D24 — the 2014 surface is wrong for that site. |
+
+Always check the `query` operation's footprint list at your point before trusting an ImageServer number — it tells you exactly which vintage produced the value, and whether a newer surface exists that the service isn't serving yet.
 
 ## SANDAG — Portal sharing API
 
