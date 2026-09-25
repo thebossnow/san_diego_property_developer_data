@@ -4,7 +4,7 @@
 **Status of findings:** All endpoints below were called live and verified on 2026-09-19. Response values quoted are actual returns, not documentation claims.
 **Auth:** Every endpoint in this document is public. No API key, no token, no login. Exceptions are noted explicitly.
 
-**See also:** [`San_Diego_GIS__Parcel_Data_APIs___Reference.md`](San_Diego_GIS__Parcel_Data_APIs___Reference.md) is the primary reference for parcels, zoning, general plan, state housing law screening (SB 9/35/6, AB 2011/803), transit/TOD layers, address points, geocoding, and USGS 3DEP elevation (including the National Map Access API and the lidar data-vintage gap). This document does not repeat that ground. It covers County-hosted environmental, hazard, and infrastructure layers on `gis-public.sandiegocounty.gov` that have no SANDAG equivalent, plus the results of testing five County services against their apparent SANDAG counterparts.
+**See also:** [`San_Diego_GIS__Parcel_Data_APIs___Reference.md`](San_Diego_GIS__Parcel_Data_APIs___Reference.md) is the primary reference for parcels, zoning, general plan, state housing law screening (SB 9/35/6, AB 2011/803), transit/TOD layers, address points, geocoding, and USGS 3DEP elevation (including the National Map Access API and the lidar data-vintage gap). This document does not repeat that ground. It covers County-hosted environmental, hazard, and infrastructure layers on `gis-public.sandiegocounty.gov` that have no SANDAG equivalent, plus the results of testing five County services against their apparent SANDAG counterparts. Statewide layers that apply here too are in [`CAL_FIRE_Endpoints_Reference.md`](CAL_FIRE_Endpoints_Reference.md) (fire hazard zones, burn history) and [`CA_Geoportal_Endpoints_Reference.md`](CA_Geoportal_Endpoints_Reference.md) (statewide zoning and general plan, CGS fault, liquefaction and landslide zones).
 
 ---
 
@@ -160,11 +160,11 @@ esriSpatialRelEnvelopeIntersects   fastest, least precise
 
 Ordered by impact on SB 79 site screening.
 
-1. **City-level zoning beyond San Diego.** Confirmed published for City of San Diego (`Zoning_Base_SD`) and unincorporated county only (`Zoning_Unincorporated`/`ZONING_CN`, confirmed identical to each other). Vista, Carlsbad, Oceanside, Escondido, San Marcos zoning is not on either GIS platform found so far. Each city likely runs its own GIS, not yet enumerated.
+1. **City-level zoning beyond San Diego.** Confirmed published for City of San Diego (`Zoning_Base_SD`) and unincorporated county only (`Zoning_Unincorporated`/`ZONING_CN`, confirmed identical to each other). Vista, Carlsbad, Oceanside, Escondido, San Marcos zoning is not on either GIS platform found so far. Each city likely runs its own GIS, not yet enumerated. Partial answer: the State Geoportal's `California_Statewide_Zoning_South` layer covers these cities (verified hit in Vista, `SP-DV`), but its source data is 2021-2023 and hand-converted for many cities, so use it as a lead and confirm with the city. See [`CA_Geoportal_Endpoints_Reference.md`](CA_Geoportal_Endpoints_Reference.md).
 2. **In-city SB 35 / AB 2011 / streamlining eligibility.** Confirmed unavailable, not just undocumented: County and SANDAG `Housing_Laws` are byte-identical, and both return `N/A` on every criteria field for all 491 incorporated-city (`JURI='INC'`) rows, checked across the full table. Vista, Carlsbad, and every other city need a different source entirely — this doesn't exist yet on either GIS platform found so far.
 3. **Owner identity (name).** Neither parcels service (County or SANDAG) publishes an owner name field, only an owner-occupied flag. Assessed value plus situs address in one call: SANDAG `Hosted/Parcels` (other doc), confirmed to cross-check exactly against `PPM_PublicAGO`. Owner name still requires Realist, CRMLS, or the ARCC side.
 4. **SB 79 tier geometry.** Nothing publishes SB 79's own "major transit stop" / tier determination as a layer. Has to be built from `Transit_Stops_GTFS` plus the statute's own distance/frequency thresholds.
-5. **Fire hazard severity zones (CAL FIRE FHSZ).** Confirmed there is no countywide FHSZ layer on either server — SANDAG's `Fire_Hazard_Severity_Zones_SD` is a single polygon covering only the City of San Diego LRA. This is now more than a documentation gap: the two SB 9 sources (Section 1 above) disagree on `fhsz_very_high` at 25.1% of sampled points, consistent with (but not confirmed against) a 2025 CAL FIRE FHSZ map update. Need CAL FIRE's own state FHSZ endpoint to adjudicate before trusting either SB 9 layer's fire-hazard flag.
+5. **Fire hazard severity zones (CAL FIRE FHSZ).** Confirmed there is no countywide FHSZ layer on either server — SANDAG's `Fire_Hazard_Severity_Zones_SD` is a single polygon covering only the City of San Diego LRA. This is now more than a documentation gap: the two SB 9 sources (Section 1 above) disagree on `fhsz_very_high` at 25.1% of sampled points, consistent with (but not confirmed against) a 2025 CAL FIRE FHSZ map update. CAL FIRE's own state FHSZ endpoints (SRA 2024, LRA 2025) and the City of San Diego's adopted 2025 VHFHSZ layer are now documented in [`CAL_FIRE_Endpoints_Reference.md`](CAL_FIRE_Endpoints_Reference.md). Re-scoring the 171 SB 9 sample points against them has not been done yet, so the disagreement is still unadjudicated.
 6. **Slope-based constrained-area deductions.** Several jurisdictions deduct steep slope from developable area in density calcs. Compute from the USGS D24 DEM once finalist sites are picked — see the other doc's data-vintage section for why D24 (not the default ImageServer mosaic) is the surface to use.
 
 ### Candidate pipeline
@@ -176,9 +176,13 @@ Ordered by impact on SB 79 site screening.
                                       SB 79's own tier thresholds still TO BUILD on top of it
 3. Check zoning / base density     -> Zoning_Unincorporated / ZONING_CN (confirmed identical,
                                       either works) or Zoning_Base_SD (City of SD);
-                                      other cities TO FIND
+                                      other cities: Statewide Zoning South as a lead
+                                      only (CA_Geoportal doc), confirm with the city
 4. Screen hard constraints         -> HYD_FLOODPL, ECO_MSCP_CN, GEOLOGY_ACTIVE_FAULTS_CN,
-                                      ESMT_OPEN_SPACE, COASTAL_OVERLAY_ZONE_CN, AG_FMMP (this doc)
+                                      ESMT_OPEN_SPACE, COASTAL_OVERLAY_ZONE_CN, AG_FMMP (this doc);
+                                      CGS Alquist-Priolo, liquefaction, landslide (CA_Geoportal doc);
+                                      FHSZ SRA/LRA + City of SD VHFHSZ, FRAP burn history
+                                      (CAL_FIRE doc)
 5. Check streamlining eligibility   -> Housing_Laws, County and SANDAG copies confirmed identical;
                                       covers unincorporated county only, city parcels return N/A
                                       from both and need a source that doesn't exist here yet
@@ -222,6 +226,7 @@ Also check `access` (`public` vs `org`) and `licenseInfo` before relying on anyt
 | 2026-09-20 | Reconciled against `San_Diego_GIS__Parcel_Data_APIs___Reference.md`. Dropped/flagged County-side parcels, zoning, and housing-law claims that conflicted with or duplicated the SANDAG-verified versions. Trimmed Known Gaps to remove items already solved in that doc. |
 | 2026-09-20 | Live-tested all five County/SANDAG overlaps: parcels (confirmed complementary split), housing law (confirmed duplicate, byte-identical), zoning (confirmed duplicate, byte-identical), SB 9 (confirmed real conflict, 5.8-25.1% disagreement, recommend SANDAG by recency), APN geocoders (confirmed not duplicates, different input types). Fixed a `CN`/`CO` jurisdiction-code transposition in this doc's own reference table. |
 | 2026-09-20 | Consolidated with a separately-merged USGS 3DEP section in `San_Diego_GIS__Parcel_Data_APIs___Reference.md` (added while this doc was in progress). Moved the ImageServer walkthrough, the National Map Access API, and the data-vintage-gap finding into that doc's elevation section rather than duplicating them here. Renamed this file from `Public_GIS_Elevation_API_Reference.md` to reflect its now-narrower scope: County constraint layers and the SANDAG/County reconciliation results. |
+| 2026-09-25 | Cross-linked the CAL FIRE and State Geoportal references. Updated Known Gaps 1 (statewide zoning as a lead for other cities) and 5 (state FHSZ endpoints now documented, SB 9 disagreement still not re-scored). Added CGS and CAL FIRE layers to pipeline step 4. |
 
 ---
 

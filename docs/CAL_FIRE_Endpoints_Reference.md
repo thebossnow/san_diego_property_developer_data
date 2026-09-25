@@ -297,5 +297,11 @@ Local adoption in the other 17 incorporated cities and the unincorporated
 County (start with Chula Vista, Escondido, Oceanside, Carlsbad, El Cajon,
 San Marcos, Santee). Whether any publish a queryable layer or only a PDF
 map.
-Other constraint layers: FEMA flood, Alquist-Priolo fault zones, liquefaction,
-county zoning and general plan services.
+FEMA flood (NFHL). Not on the CAL FIRE hub or the State Geoportal.
+
+Statewide zoning, general plan land use, and the CGS Alquist-Priolo /
+liquefaction / landslide hazard zones are now covered in
+[CA_Geoportal_Endpoints_Reference.md](CA_Geoportal_Endpoints_Reference.md)
+(California State Geoportal, a different ArcGIS Hub site from this one).
+County zoning and general plan services are covered in
+[San_Diego_GIS__Parcel_Data_APIs___Reference.md](San_Diego_GIS__Parcel_Data_APIs___Reference.md).
