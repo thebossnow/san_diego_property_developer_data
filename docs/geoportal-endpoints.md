@@ -1,7 +1,7 @@
 # California State Geoportal (gis.data.ca.gov), tested 2026-09-20
 
 Relevance to this project: this is the state's general-purpose GIS catalog,
-separate from the CAL FIRE hub already documented in calfire-endpoints.md.
+separate from the CAL FIRE hub already documented in CAL_FIRE_Endpoints_Reference.md.
 It is where statewide zoning, general plan land use, and the CGS
 seismic/geologic hazard zones are published. Same platform (ArcGIS Hub) as
 the CAL FIRE hub, so the same search API pattern and the same caveat about
@@ -139,7 +139,7 @@ project.
 Searched building permits / assessor parcel: nothing. Parcel-level
 ownership, APN, and permit history stay with county assessor and building
 department systems, not this state portal, consistent with what
-calfire-endpoints.md already flagged as unevaluated.
+CAL_FIRE_Endpoints_Reference.md already flagged as unevaluated.
 
 ## Adjacent, not yet used: Jurisdictions boundary layer
 

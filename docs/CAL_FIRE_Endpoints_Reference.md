@@ -5,6 +5,9 @@ Relevance to this project: fire hazard classification drives building code
 Natural Hazard Disclosure at sale. Active incident feeds do not affect what
 can be built and are not useful here.
 
+See also [geoportal-endpoints.md](geoportal-endpoints.md) for the California State
+Geoportal services, a separate statewide host from the CAL FIRE hub below.
+
 ## Verified working: Fire Hazard Severity Zones
 
 State Responsibility Area (adopted 2024-01-31, effective 2024-04-01):
