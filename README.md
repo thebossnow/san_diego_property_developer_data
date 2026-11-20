@@ -6,13 +6,19 @@ A comprehensive resource for programmatic analysis and due diligence on San Dieg
 
 - **Parcel data APIs**: 1.09M+ county-wide parcels with complete assessor information, situs addresses, and acreage
 - **Zoning & General Plan layers**: Zone codes, setbacks, FAR, density, and land use designations for both unincorporated county and City of San Diego
-- **Housing law screening**: SB 9, SB 35, SB 6, AB 2011, and AB 803 eligibility checks at the parcel level
+- **Housing law screening**: SB 9, SB 35, SB 6, AB 2011, and AB 803 eligibility checks at the parcel level, for the unincorporated county only (SANDAG `Housing_Laws` layer; every field is N/A inside cities)
 - **Transit & TOD overlays**: Transit stops (GTFS), priority areas, and FAR overlays for SB 79 site screening
 - **Address normalization**: Direct address-to-APN lookups and NG911-standard address point schemas
 - **Geocoding services**: Both address and APN-based geocoders for coordinate-based spatial queries
 - **Terrain & elevation**: USGS 3DEP bare-earth DEM (1 m lidar-derived in San Diego) — point elevation, slope, aspect, elevation profiles, parcel-level slope statistics, and GeoTIFF clips
 
 All services are unauthenticated REST APIs. The parcel, zoning, housing-law, transit and geocoding services serve GeoJSON/JSON from SANDAG's regional GIS platform and San Diego County's public assessor data; elevation is a raster service from USGS (JSON, or binary GeoTIFF — no GeoJSON).
+
+## Related project
+
+[SD_PARCEL_INTEL](https://github.com/thebossnow/SD_PARCEL_INTEL) is a working app built on the same kind of public GIS services, aimed at North County San Diego first. It keeps its own tested list of the endpoints it uses in its [docs/SOURCES.md](https://github.com/thebossnow/SD_PARCEL_INTEL/blob/main/docs/SOURCES.md). It does not read this repo at run time.
+
+This repo (README plus 5 docs, 6 Markdown files) is the wider research: SANDAG, County, CAL FIRE, CGS, FEMA and other layers, including some the app does not use. Use it to find and compare candidate layers. Check the app's SOURCES.md for what is wired in and tested.
 
 ## Documentation
 
